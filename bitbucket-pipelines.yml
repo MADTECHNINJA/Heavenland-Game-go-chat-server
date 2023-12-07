@@ -1,0 +1,82 @@
+options:
+  docker: true
+
+
+definitions:
+  steps:
+    - step: &docker-build-push-and-deploy-cloudrun
+        name: Build - Push - Deploy to GCP (gcr.io/extreme-arch-347212/chat_server) for Chat Server
+        image: google/cloud-sdk:latest
+        caches:
+          - docker
+        deployment: test
+        script:
+          # set image name
+          - export IMAGE_NAME='gcr.io/extreme-arch-347212/gochatserver'
+          - export SERVICE_NAME='go-chat-server'
+          - export PROJECT_NAME='extreme-arch-347212'
+          - export PORT_VAR=8080
+          - echo $PORT_VAR
+
+          # Build image
+          - docker build -t $IMAGE_NAME --build-arg ENV=dev .
+
+          # Gcloud auth and check
+          - echo $GCLOUD_API_KEYFILE | base64 -d > ./gcloud-api-key.json
+          - gcloud auth activate-service-account --key-file gcloud-api-key.json
+          - gcloud config list
+
+          # config image registry with gcloud helper
+          - gcloud auth configure-docker -q
+
+          # push image to gcr
+          - docker push $IMAGE_NAME
+
+          # deploy to cloud run
+          - gcloud run deploy $SERVICE_NAME --image $IMAGE_NAME --region us-central1 --project $PROJECT_NAME --port $PORT_VAR --allow-unauthenticated
+
+          - echo "ALL DONE DEPLOYMENT HAS BEEN SUCCEDED"
+
+    - step: &docker-build-push-and-deploy-prod
+        name: Build - Push - Deploy to GCP (gcr.io/extreme-arch-347212/chat_server) for Chat Server
+        image: google/cloud-sdk:latest
+        caches:
+          - docker
+        deployment: test
+        script:
+          # set image name
+          - export IMAGE_NAME='gcr.io/extreme-arch-347212/gochatserver'
+          - export SERVICE_NAME='go-chat-server-prod'
+          - export PROJECT_NAME='extreme-arch-347212'
+          - export PORT_VAR=8080
+          - echo $PORT_VAR
+
+          # Build image
+          - docker build -t $IMAGE_NAME --build-arg ENV=prod .
+
+          # Gcloud auth and check
+          - echo $GCLOUD_API_KEYFILE | base64 -d > ./gcloud-api-key.json
+          - gcloud auth activate-service-account --key-file gcloud-api-key.json
+          - gcloud config list
+
+          # config image registry with gcloud helper
+          - gcloud auth configure-docker -q
+
+          # push image to gcr
+          - docker push $IMAGE_NAME
+
+          # deploy to cloud run
+          - gcloud run deploy $SERVICE_NAME --image $IMAGE_NAME --region us-central1 --project $PROJECT_NAME --port $PORT_VAR --allow-unauthenticated
+
+          - echo "ALL DONE DEPLOYMENT HAS BEEN SUCCEDED"
+
+pipelines:
+  tags:
+    v*:
+      - step: *docker-build-push-and-deploy-cloudrun
+
+  branches:
+    master:
+      - step: *docker-build-push-and-deploy-cloudrun
+    prod:
+      - step: *docker-build-push-and-deploy-prod

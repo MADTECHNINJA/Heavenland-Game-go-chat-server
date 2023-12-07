@@ -1,0 +1,12 @@
+version: "1.0"
+services:
+  app:
+    build:
+      dockerfile: dockerfile
+      context: .
+    ports:
+      - "8080:8080"
+    env_file:
+      - .prod
+      - .dev
+
